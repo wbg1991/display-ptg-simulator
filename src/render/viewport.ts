@@ -22,13 +22,25 @@ export class ViewportManager {
   private clock = new VirtualClock();
   private fpsMeter = new FpsMeter();
   private rafHandle = 0;
+  private running = false;
   private unsubscribe: () => void;
 
   constructor(container: HTMLElement) {
     this.container = container;
     this.rebuildPanels();
     this.unsubscribe = appStore.subscribe((s) => this.onStateChange(s));
-    this.rafHandle = requestAnimationFrame(this.loop);
+    this.setActive(true);
+  }
+
+  /** Pauses/resumes the rAF loop - used when another view mode (e.g. the pixel-scan tab) is what's actually visible. */
+  setActive(active: boolean): void {
+    if (active === this.running) return;
+    this.running = active;
+    if (active) {
+      this.rafHandle = requestAnimationFrame(this.loop);
+    } else {
+      cancelAnimationFrame(this.rafHandle);
+    }
   }
 
   private rebuildPanels(): void {

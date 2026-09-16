@@ -121,7 +121,7 @@ function renderReadout(root: HTMLElement, s: AppState): void {
 }
 
 /** Draws a scaled-to-width bar diagram of Active/FP/Sync/BP for one axis, plus a sweep marker at `progress` (0..1). */
-function drawAxisWaveform(
+export function drawAxisWaveform(
   ctx: CanvasRenderingContext2D,
   y: number,
   h: number,

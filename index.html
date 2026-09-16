@@ -27,28 +27,40 @@
 
         <!-- Center: viewport + bottom panel -->
         <main class="flex min-w-0 flex-1 flex-col">
-          <!-- Viewport toolbar -->
-          <div id="viewport-toolbar" class="flex h-10 shrink-0 items-center gap-4 border-b border-white/10 bg-neutral-900/40 px-3 text-[12px]">
-            <!-- filled by ui/viewportToolbar.ts -->
+          <!-- View mode tabs -->
+          <div id="view-tabs" class="flex h-9 shrink-0 items-center gap-1 border-b border-white/10 bg-neutral-900/60 px-2 text-[12px]">
+            <!-- filled by ui/viewTabs.ts -->
           </div>
 
-          <!-- Rendering viewport -->
-          <div id="viewport" class="relative flex min-h-0 flex-1 gap-px overflow-hidden bg-black">
-            <!-- panel canvases mounted by render/viewport.ts -->
+          <div id="compare-mode" class="flex min-h-0 flex-1 flex-col">
+            <!-- Viewport toolbar -->
+            <div id="viewport-toolbar" class="flex h-10 shrink-0 items-center gap-4 border-b border-white/10 bg-neutral-900/40 px-3 text-[12px]">
+              <!-- filled by ui/viewportToolbar.ts -->
+            </div>
+
+            <!-- Rendering viewport -->
+            <div id="viewport" class="relative flex min-h-0 flex-1 gap-px overflow-hidden bg-black">
+              <!-- panel canvases mounted by render/viewport.ts -->
+            </div>
+
+            <!-- Bottom panel: calculated timing + waveform + telemetry -->
+            <section id="bottom-panel" class="scroll-thin flex h-[240px] shrink-0 gap-px overflow-hidden border-t border-white/10 bg-neutral-900/60">
+              <div id="timing-readout" class="scroll-thin w-[420px] shrink-0 overflow-y-auto p-3">
+                <!-- filled by ui/bottomPanel.ts -->
+              </div>
+              <div id="waveform-panel" class="flex min-w-0 flex-1 flex-col p-3">
+                <!-- filled by ui/bottomPanel.ts -->
+              </div>
+              <div id="telemetry-panel" class="w-[260px] shrink-0 overflow-y-auto border-l border-white/10 p-3">
+                <!-- filled by ui/bottomPanel.ts -->
+              </div>
+            </section>
           </div>
 
-          <!-- Bottom panel: calculated timing + waveform + telemetry -->
-          <section id="bottom-panel" class="scroll-thin flex h-[240px] shrink-0 gap-px overflow-hidden border-t border-white/10 bg-neutral-900/60">
-            <div id="timing-readout" class="scroll-thin w-[420px] shrink-0 overflow-y-auto p-3">
-              <!-- filled by ui/bottomPanel.ts -->
-            </div>
-            <div id="waveform-panel" class="flex min-w-0 flex-1 flex-col p-3">
-              <!-- filled by ui/bottomPanel.ts -->
-            </div>
-            <div id="telemetry-panel" class="w-[260px] shrink-0 overflow-y-auto border-l border-white/10 p-3">
-              <!-- filled by ui/bottomPanel.ts -->
-            </div>
-          </section>
+          <!-- Pixel-scan educational view -->
+          <div id="scan-mode" class="hidden min-h-0 flex-1 flex-col">
+            <!-- filled by render/scanView.ts -->
+          </div>
         </main>
       </div>
     </div>

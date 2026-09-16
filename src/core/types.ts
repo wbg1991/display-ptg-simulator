@@ -30,6 +30,14 @@ export interface ViewportConfig {
   showSyncOverlay: boolean;
 }
 
+export type ViewMode = "compare" | "scan";
+
+export interface ScanViewConfig {
+  playing: boolean;
+  /** Independent of ViewportConfig.timeScale - real refresh rates are kHz-MHz, far too fast to ever watch pixel-by-pixel, so this view has its own, much smaller, user-facing rate. */
+  pixelsPerSec: number;
+}
+
 export interface CvtFormState {
   hActive: number;
   vActive: number;
@@ -57,6 +65,8 @@ export interface AppState {
   pattern: PatternConfig;
   comparison: ComparisonConfig;
   viewport: ViewportConfig;
+  viewMode: ViewMode;
+  scanView: ScanViewConfig;
 
   /** Measured real display refresh, sampled from rAF deltas. */
   measuredMonitorFps: number;

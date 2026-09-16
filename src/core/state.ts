@@ -44,6 +44,11 @@ const initialState: AppState = {
     timeScale: 1,
     showSyncOverlay: false,
   },
+  viewMode: "compare",
+  scanView: {
+    playing: true,
+    pixelsPerSec: 300,
+  },
 
   measuredMonitorFps: 0,
 };

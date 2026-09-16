@@ -133,6 +133,28 @@ const en = {
   "header.language": "Language",
 
   "error.generic": "Something went wrong",
+
+  "tab.compare": "Simulator",
+  "tab.scan": "Pixel Scan (how refresh works)",
+  "scan.intro":
+    "Real displays draw one pixel at a time, left-to-right, line by line, at a pixel clock in the tens to hundreds of MHz - far too fast to ever see. This view fakes that out: a small stand-in grid, scanned at a speed you control, so the mechanism itself becomes visible. Proportions of Active / Front Porch / Sync / Back Porch are kept close to the real timing but compressed to fit a watchable grid - it is not pixel-accurate.",
+  "scan.play": "Play",
+  "scan.pause": "Pause",
+  "scan.reset": "Reset",
+  "scan.stepPixel": "+1 Pixel",
+  "scan.stepLine": "+1 Line",
+  "scan.speed": "Speed",
+  "scan.hStatus": "Horizontal - per line",
+  "scan.vStatus": "Vertical - per frame",
+  "scan.phase.active": "Active - drawing pixels",
+  "scan.phase.frontPorch": "Front Porch - beam idle, nothing drawn",
+  "scan.phase.sync": "SYNC pulse",
+  "scan.phase.backPorch": "Back Porch - beam idle, nothing drawn",
+  "scan.line": "Line",
+  "scan.pixel": "Pixel",
+  "scan.frame": "Frame",
+  "scan.hsyncNote": "H-SYNC fires once per line: \"this line is done, start the next one.\"",
+  "scan.vsyncNote": "V-SYNC fires once per frame: \"the whole image is done, go back to the top-left.\"",
 };
 
 const ko: typeof en = {
@@ -255,6 +277,28 @@ const ko: typeof en = {
   "header.language": "언어",
 
   "error.generic": "문제가 발생했습니다",
+
+  "tab.compare": "시뮬레이터",
+  "tab.scan": "픽셀 스캔 (화면이 갱신되는 원리)",
+  "scan.intro":
+    "실제 디스플레이는 수십~수백 MHz의 픽셀 클럭으로 왼쪽에서 오른쪽으로, 한 줄씩 픽셀을 하나씩 그립니다 - 눈으로 보기엔 너무 빠릅니다. 이 화면은 그 과정을 눈에 보이게 흉내낸 것입니다: 작은 대표 격자를 원하는 속도로 스캔해서 원리 자체를 보여줍니다. Active/프론트 포치/싱크/백 포치의 비율은 실제 타이밍에 최대한 가깝게 맞췄지만, 볼 수 있는 크기로 압축한 것이라 픽셀 단위로 정확하지는 않습니다.",
+  "scan.play": "재생",
+  "scan.pause": "일시정지",
+  "scan.reset": "초기화",
+  "scan.stepPixel": "+1 픽셀",
+  "scan.stepLine": "+1 라인",
+  "scan.speed": "속도",
+  "scan.hStatus": "수평 - 한 라인 기준",
+  "scan.vStatus": "수직 - 한 프레임 기준",
+  "scan.phase.active": "Active - 픽셀을 그리는 중",
+  "scan.phase.frontPorch": "프론트 포치 - 빔 대기, 아무것도 그리지 않음",
+  "scan.phase.sync": "SYNC 펄스",
+  "scan.phase.backPorch": "백 포치 - 빔 대기, 아무것도 그리지 않음",
+  "scan.line": "라인",
+  "scan.pixel": "픽셀",
+  "scan.frame": "프레임",
+  "scan.hsyncNote": "H-싱크는 한 라인마다 한 번 발생합니다: \"이 줄은 끝났으니 다음 줄을 시작하라\"는 신호입니다.",
+  "scan.vsyncNote": "V-싱크는 한 프레임마다 한 번 발생합니다: \"전체 화면이 끝났으니 좌상단으로 돌아가라\"는 신호입니다.",
 };
 
 const dicts: Record<Locale, typeof en> = { en, ko };
