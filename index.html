@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Display PTG &amp; Timing Simulator</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+
+  <body class="bg-neutral-950 text-neutral-200">
+    <div id="app" class="flex h-full w-full flex-col">
+      <!-- Title bar -->
+      <header class="flex h-9 shrink-0 items-center gap-2 border-b border-white/10 bg-neutral-900/80 px-3 text-[12px] text-neutral-400">
+        <span class="font-semibold text-neutral-200">Display PTG &amp; Timing Simulator</span>
+        <span class="text-neutral-600">|</span>
+        <span id="header-subtitle"></span>
+        <div class="flex-1"></div>
+        <div id="header-lang" class="flex items-center gap-1"></div>
+      </header>
+
+      <div class="flex min-h-0 flex-1">
+        <!-- Left Sidebar: timing + pattern inputs -->
+        <aside id="sidebar" class="scroll-thin flex w-[320px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-white/10 bg-neutral-900/60 p-3">
+          <!-- filled by ui/sidebar.ts -->
+        </aside>
+
+        <!-- Center: viewport + bottom panel -->
+        <main class="flex min-w-0 flex-1 flex-col">
+          <!-- Viewport toolbar -->
+          <div id="viewport-toolbar" class="flex h-10 shrink-0 items-center gap-4 border-b border-white/10 bg-neutral-900/40 px-3 text-[12px]">
+            <!-- filled by ui/viewportToolbar.ts -->
+          </div>
+
+          <!-- Rendering viewport -->
+          <div id="viewport" class="relative flex min-h-0 flex-1 gap-px overflow-hidden bg-black">
+            <!-- panel canvases mounted by render/viewport.ts -->
+          </div>
+
+          <!-- Bottom panel: calculated timing + waveform + telemetry -->
+          <section id="bottom-panel" class="scroll-thin flex h-[240px] shrink-0 gap-px overflow-hidden border-t border-white/10 bg-neutral-900/60">
+            <div id="timing-readout" class="scroll-thin w-[420px] shrink-0 overflow-y-auto p-3">
+              <!-- filled by ui/bottomPanel.ts -->
+            </div>
+            <div id="waveform-panel" class="flex min-w-0 flex-1 flex-col p-3">
+              <!-- filled by ui/bottomPanel.ts -->
+            </div>
+            <div id="telemetry-panel" class="w-[260px] shrink-0 overflow-y-auto border-l border-white/10 p-3">
+              <!-- filled by ui/bottomPanel.ts -->
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+html, body, #app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #0b0d11;
+  color: #d7dbe0;
+  font-family: -apple-system, "Segoe UI", Inter, system-ui, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* Thin, unobtrusive scrollbars for the sidebar */
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: #2a2f38;
+  border-radius: 4px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Numeric inputs: no spinner clutter, tabular figures for stable readouts */
+input[type="number"] {
+  -moz-appearance: textfield;
+  font-variant-numeric: tabular-nums;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.mono-nums {
+  font-variant-numeric: tabular-nums;
+  font-family: "Cascadia Mono", "SF Mono", Consolas, monospace;
+}
+
+canvas {
+  display: block;
+}
