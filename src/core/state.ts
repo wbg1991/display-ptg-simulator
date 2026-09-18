@@ -43,6 +43,7 @@ const initialState: AppState = {
     zoom: 0,
     timeScale: 1,
     showSyncOverlay: false,
+    pixelReveal: false,
   },
   viewMode: "compare",
   scanView: {

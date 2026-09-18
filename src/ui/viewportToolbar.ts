@@ -1,7 +1,7 @@
 import { appStore } from "../core/state";
 import { telemetryBus } from "../core/telemetry";
 import { t } from "../core/i18n";
-import { selectField, buttonEl, badge } from "./controls";
+import { selectField, buttonEl, badge, checkboxField } from "./controls";
 import type { AppState } from "../core/types";
 
 const ZOOM_OPTIONS = () => [
@@ -55,6 +55,18 @@ function render(root: HTMLElement, s: AppState, onReset: () => void): void {
   root.appendChild(scaleSel);
 
   root.appendChild(buttonEl(t("button.reset"), onReset));
+
+  const syncOverlayField = checkboxField(t("toolbar.syncOverlay"), s.viewport.showSyncOverlay, (checked) =>
+    appStore.set({ viewport: { ...appStore.get().viewport, showSyncOverlay: checked } }),
+  );
+  syncOverlayField.classList.add("shrink-0");
+  root.appendChild(syncOverlayField);
+
+  const pixelRevealField = checkboxField(t("toolbar.pixelReveal"), s.viewport.pixelReveal, (checked) =>
+    appStore.set({ viewport: { ...appStore.get().viewport, pixelReveal: checked } }),
+  );
+  pixelRevealField.classList.add("shrink-0");
+  root.appendChild(pixelRevealField);
 
   if (s.comparison.enabled) {
     const label = document.createElement("span");

@@ -28,6 +28,8 @@ export interface ViewportConfig {
   /** Virtual-clock rate relative to real time; 1 = real time, 1/8 = 8x slow-motion. */
   timeScale: number;
   showSyncOverlay: boolean;
+  /** Scissors each panel's draw down to only the rows/columns "scanned" so far this frame, instead of drawing the whole frame at once - lets the raster scan itself be watched at the real active resolution (see ViewportManager.updatePixelReveal). */
+  pixelReveal: boolean;
 }
 
 export type ViewMode = "compare" | "scan";

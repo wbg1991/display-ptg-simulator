@@ -86,6 +86,10 @@ const en = {
   "button.reset": "Reset",
   "toolbar.comparing": "Comparing {a} Hz vs {b} Hz",
   "badge.notResolvable": "Not resolvable at 1x on this display - slow down",
+  "toolbar.syncOverlay": "Sync Overlay",
+  "overlay.hsync": "H-SYNC",
+  "overlay.vsync": "V-SYNC",
+  "toolbar.pixelReveal": "Draw Pixel-by-Pixel",
 
   "panel.calculatedTiming": "Calculated Timing",
   "panel.noTiming": "No timing calculated yet.",
@@ -230,6 +234,10 @@ const ko: typeof en = {
   "button.reset": "초기화",
   "toolbar.comparing": "{a} Hz vs {b} Hz 비교 중",
   "badge.notResolvable": "이 디스플레이에서는 1배속으로 구분할 수 없음 - 배속을 낮추세요",
+  "toolbar.syncOverlay": "싱크 오버레이",
+  "overlay.hsync": "H-싱크",
+  "overlay.vsync": "V-싱크",
+  "toolbar.pixelReveal": "픽셀 단위로 그리기",
 
   "panel.calculatedTiming": "계산된 타이밍",
   "panel.noTiming": "아직 계산된 타이밍이 없습니다.",

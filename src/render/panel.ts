@@ -28,6 +28,7 @@ export class RefreshPanel {
   private activeH = 1080;
   private pattern: PatternConfig;
   private zoom = 0; // 0 = fit-to-panel; >0 = active-pixels-per-CSS-pixel scale
+  private revealProgress: { row: number; col: number } | null = null;
 
   constructor(canvas: HTMLCanvasElement, targetHz: number, pattern: PatternConfig) {
     this.canvas = canvas;
@@ -76,6 +77,11 @@ export class RefreshPanel {
     if (hz > 0 && hz !== this.sim.targetHz) this.sim.targetHz = hz;
   }
 
+  /** `row`/`col` are how many active rows/columns (top-down, left-right) of the current frame have been "scanned" so far - null draws the whole frame at once, as always. See ViewportManager.updatePixelReveal for where this comes from. */
+  setRevealProgress(progress: { row: number; col: number } | null): void {
+    this.revealProgress = progress;
+  }
+
   resetSimulation(): void {
     this.sim.reset();
   }
@@ -112,13 +118,12 @@ export class RefreshPanel {
     const vpX = Math.round((canvasW - vpW) / 2);
     const vpY = Math.round((canvasH - vpH) / 2);
 
-    // Full clear paints the letterbox border; the scissored draw below only touches the active-resolution rect.
+    // Full clear paints the letterbox border; the scissored draw(s) below only touch the active-resolution rect.
     gl.viewport(0, 0, canvasW, canvasH);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     gl.enable(gl.SCISSOR_TEST);
     gl.viewport(vpX, vpY, vpW, vpH);
-    gl.scissor(vpX, vpY, vpW, vpH);
 
     const p = this.programs[this.pattern.kind];
     gl.useProgram(p.program);
@@ -139,7 +144,28 @@ export class RefreshPanel {
         break;
     }
 
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    const reveal = this.revealProgress;
+    if (reveal && reveal.row < this.activeH) {
+      // WebGL window coords are bottom-up, but a raster scan is top-down, so
+      // "rows scanned so far" is the TOP slice of the viewport, shrinking
+      // toward vpY as more of the frame is revealed from underneath it.
+      const rowH = vpH / this.activeH;
+      const revealedRowsPx = Math.round(rowH * reveal.row);
+      const currentRowTop = vpY + vpH - revealedRowsPx;
+      if (revealedRowsPx > 0) {
+        gl.scissor(vpX, currentRowTop, vpW, revealedRowsPx);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+      const colW = vpW / this.activeW;
+      const revealedColsPx = Math.round(colW * reveal.col);
+      if (revealedColsPx > 0) {
+        gl.scissor(vpX, Math.round(currentRowTop - rowH), revealedColsPx, Math.ceil(rowH));
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+    } else {
+      gl.scissor(vpX, vpY, vpW, vpH);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
     gl.disable(gl.SCISSOR_TEST);
   }
 }
