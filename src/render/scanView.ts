@@ -1,6 +1,6 @@
 import { appStore } from "../core/state";
 import { t } from "../core/i18n";
-import { ScanSimulator, axisPhase, axisTotal, type AxisPhase } from "../core/scanClock";
+import { ScanSimulator, type AxisPhase, type AxisSegments } from "../core/scanClock";
 import { drawAxisWaveform } from "../ui/bottomPanel";
 import { buttonEl, selectField } from "../ui/controls";
 import type { DisplayTiming } from "../types/generated/DisplayTiming";
@@ -8,9 +8,49 @@ import type { DisplayTiming } from "../types/generated/DisplayTiming";
 const SPEED_OPTIONS = [20, 50, 150, 300, 800, 2000, 6000];
 
 /** Longest side (in compressed grid cells) of the picture grid; the other side is derived from the active-resolution aspect ratio. */
-const GRID_LONG_SIDE = 32;
+const GRID_LONG_SIDE = 20;
 const GRID_MIN = 6;
-const GRID_MAX = 44;
+const GRID_MAX = 28;
+
+/** Blanking zones are tiny in real timings (e.g. 4 of 1125 lines), so they get exaggerated to stay visible. */
+const BLANK_EXAGGERATION = 3;
+const BLANK_MIN_CELLS = 2;
+
+type ZoneKind = "active" | "frontPorch" | "backPorch" | "hSync" | "vSync";
+
+const ZONE_COLORS: Record<Exclude<ZoneKind, "active">, string> = {
+  frontPorch: "#f59e0b",
+  backPorch: "#14b8a6",
+  hSync: "#ef4444",
+  vSync: "#a855f7",
+};
+
+interface AxisLayout {
+  active: number;
+  frontPorch: number;
+  sync: number;
+  backPorch: number;
+  total: number;
+}
+
+const EMPTY_LAYOUT: AxisLayout = { active: 0, frontPorch: 0, sync: 0, backPorch: 0, total: 0 };
+
+function layoutAxis(a: AxisSegments, activeCells: number): AxisLayout {
+  const cap = Math.ceil(activeCells / 3);
+  const cells = (len: number) =>
+    len <= 0 ? 0 : Math.min(cap, Math.max(BLANK_MIN_CELLS, Math.round((len / Math.max(1, a.active)) * activeCells * BLANK_EXAGGERATION)));
+  const frontPorch = cells(a.frontPorch);
+  const sync = cells(a.syncWidth);
+  const backPorch = cells(a.backPorch);
+  return { active: activeCells, frontPorch, sync, backPorch, total: activeCells + frontPorch + sync + backPorch };
+}
+
+function cellAxisPhase(idx: number, l: AxisLayout): AxisPhase {
+  if (idx < l.active) return "active";
+  if (idx < l.active + l.frontPorch) return "frontPorch";
+  if (idx < l.active + l.frontPorch + l.sync) return "sync";
+  return "backPorch";
+}
 
 function phaseLabelKey(phase: AxisPhase): "scan.phase.active" | "scan.phase.frontPorch" | "scan.phase.sync" | "scan.phase.backPorch" {
   switch (phase) {
@@ -57,8 +97,12 @@ export class ScanViewManager {
 
   private gridRows = 0;
   private gridCols = 0;
+  private hLayout = EMPTY_LAYOUT;
+  private vLayout = EMPTY_LAYOUT;
   private revealed: Uint8Array = new Uint8Array(0);
+  private kinds: ZoneKind[] = [];
   private colors: string[] = [];
+  private highlight: ZoneKind | null = null;
   private lastGridKey = "";
   private lastFramesCompleted = 0;
 
@@ -113,6 +157,8 @@ export class ScanViewManager {
     intro.textContent = t("scan.intro");
     info.appendChild(intro);
 
+    info.appendChild(this.buildLegend());
+
     const makeStatusBlock = (titleKey: "scan.hStatus" | "scan.vStatus") => {
       const wrap = document.createElement("div");
       wrap.className = "rounded border border-white/10 p-2";
@@ -159,6 +205,43 @@ export class ScanViewManager {
     this.container.appendChild(root);
   }
 
+  private buildLegend(): HTMLElement {
+    const wrap = document.createElement("div");
+    wrap.className = "rounded border border-white/10 p-2";
+    const title = document.createElement("div");
+    title.className = "mb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-500";
+    title.textContent = t("scan.legend.title");
+    const mnemonic = document.createElement("p");
+    mnemonic.className = "mb-2 text-neutral-300";
+    mnemonic.textContent = t("scan.legend.mnemonic");
+    wrap.append(title, mnemonic);
+
+    const items: ["frontPorch" | "hSync" | "backPorch" | "vSync", "scan.legend.frontPorch" | "scan.legend.hSync" | "scan.legend.backPorch" | "scan.legend.vSync"][] = [
+      ["frontPorch", "scan.legend.frontPorch"],
+      ["hSync", "scan.legend.hSync"],
+      ["backPorch", "scan.legend.backPorch"],
+      ["vSync", "scan.legend.vSync"],
+    ];
+    for (const [kind, key] of items) {
+      const row = document.createElement("div");
+      row.className = "flex cursor-default gap-2 rounded p-1 text-neutral-400 hover:bg-white/5";
+      const swatch = document.createElement("span");
+      swatch.className = "mt-1 h-3 w-3 shrink-0 rounded-sm";
+      swatch.style.backgroundColor = ZONE_COLORS[kind];
+      const text = document.createElement("span");
+      text.textContent = t(key);
+      row.append(swatch, text);
+      row.addEventListener("mouseenter", () => (this.highlight = kind));
+      row.addEventListener("mouseleave", () => (this.highlight = null));
+      wrap.appendChild(row);
+    }
+    const hint = document.createElement("p");
+    hint.className = "mt-1 text-[11px] text-neutral-500";
+    hint.textContent = `${t("scan.legend.hint")} ${t("scan.blankingNote")}`;
+    wrap.appendChild(hint);
+    return wrap;
+  }
+
   private buildSpeedSelect(): void {
     this.speedSelectWrap.innerHTML = "";
     const current = appStore.get().scanView.pixelsPerSec;
@@ -199,23 +282,39 @@ export class ScanViewManager {
   };
 
   private ensureGrid(timing: DisplayTiming): void {
-    const key = `${timing.h.active}x${timing.v.active}`;
+    const key = JSON.stringify([timing.h, timing.v]);
     if (key === this.lastGridKey) return;
     this.lastGridKey = key;
 
     const aspect = timing.h.active / Math.max(1, timing.v.active);
+    let activeCols: number;
+    let activeRows: number;
     if (aspect >= 1) {
-      this.gridCols = GRID_LONG_SIDE;
-      this.gridRows = Math.min(GRID_MAX, Math.max(GRID_MIN, Math.round(GRID_LONG_SIDE / aspect)));
+      activeCols = GRID_LONG_SIDE;
+      activeRows = Math.min(GRID_MAX, Math.max(GRID_MIN, Math.round(GRID_LONG_SIDE / aspect)));
     } else {
-      this.gridRows = GRID_LONG_SIDE;
-      this.gridCols = Math.min(GRID_MAX, Math.max(GRID_MIN, Math.round(GRID_LONG_SIDE * aspect)));
+      activeRows = GRID_LONG_SIDE;
+      activeCols = Math.min(GRID_MAX, Math.max(GRID_MIN, Math.round(GRID_LONG_SIDE * aspect)));
     }
-    this.revealed = new Uint8Array(this.gridRows * this.gridCols);
-    this.colors = new Array(this.gridRows * this.gridCols);
+    this.hLayout = layoutAxis(timing.h, activeCols);
+    this.vLayout = layoutAxis(timing.v, activeRows);
+    this.gridCols = this.hLayout.total;
+    this.gridRows = this.vLayout.total;
+
+    const n = this.gridRows * this.gridCols;
+    this.revealed = new Uint8Array(n);
+    this.kinds = new Array(n);
+    this.colors = new Array(n);
     for (let r = 0; r < this.gridRows; r++) {
+      const vp = cellAxisPhase(r, this.vLayout);
       for (let c = 0; c < this.gridCols; c++) {
-        this.colors[r * this.gridCols + c] = cellColor(r, c, this.gridRows, this.gridCols);
+        const hp = cellAxisPhase(c, this.hLayout);
+        let kind: ZoneKind = "active";
+        if (vp !== "active") kind = vp === "sync" ? "vSync" : vp;
+        else if (hp !== "active") kind = hp === "sync" ? "hSync" : hp;
+        const i = r * this.gridCols + c;
+        this.kinds[i] = kind;
+        this.colors[i] = kind === "active" ? cellColor(r, c, this.vLayout.active, this.hLayout.active) : ZONE_COLORS[kind];
       }
     }
   }
@@ -233,8 +332,9 @@ export class ScanViewManager {
       return;
     }
 
-    this.sim.setDimensions(axisTotal(timing.h), axisTotal(timing.v));
+    // The simulator steps through compressed grid cells, not real pixels (a real line is thousands of pixels).
     this.ensureGrid(timing);
+    this.sim.setDimensions(this.gridCols, this.gridRows);
 
     if (this.sim.framesCompleted !== this.lastFramesCompleted) {
       this.lastFramesCompleted = this.sim.framesCompleted;
@@ -243,21 +343,20 @@ export class ScanViewManager {
 
     const row = this.sim.row;
     const col = this.sim.col;
-    const hPhase = axisPhase(col, timing.h);
-    const vPhase = axisPhase(row, timing.v);
+    const hPhase = cellAxisPhase(col, this.hLayout);
+    const vPhase = cellAxisPhase(row, this.vLayout);
 
-    if (hPhase === "active" && vPhase === "active") {
-      const gr = Math.min(this.gridRows - 1, Math.floor((row / timing.v.active) * this.gridRows));
-      const gc = Math.min(this.gridCols - 1, Math.floor((col / timing.h.active) * this.gridCols));
-      for (let r = 0; r <= gr; r++) {
-        const upTo = r < gr ? this.gridCols - 1 : gc;
-        for (let c = 0; c <= upTo; c++) this.revealed[r * this.gridCols + c] = 1;
-      }
+    // Raster order over the WHOLE frame (blanking included): every cell before the beam has been passed.
+    const gr = row;
+    const gc = col;
+    for (let r = 0; r <= gr; r++) {
+      const upTo = r < gr ? this.gridCols - 1 : gc;
+      for (let c = 0; c <= upTo; c++) this.revealed[r * this.gridCols + c] = 1;
     }
 
     this.drawGrid();
-    this.drawBars(timing, col / axisTotal(timing.h), row / axisTotal(timing.v));
-    this.updateText(timing, row, col, hPhase, vPhase);
+    this.drawBars(timing, col / this.gridCols, row / this.gridRows);
+    this.updateText(row, col, hPhase, vPhase);
   }
 
   private clearCanvas(canvas: HTMLCanvasElement): void {
@@ -276,33 +375,92 @@ export class ScanViewManager {
       canvas.height = h;
     }
     const ctx = canvas.getContext("2d");
-    if (!ctx || this.gridRows === 0 || this.gridCols === 0) return;
+    const timing = appStore.get().timing;
+    if (!ctx || !timing || this.gridRows === 0 || this.gridCols === 0) return;
     ctx.clearRect(0, 0, w, h);
 
-    const fitScale = Math.min(w / this.gridCols, h / this.gridRows);
-    const vpW = this.gridCols * fitScale;
-    const vpH = this.gridRows * fitScale;
-    const ox = Math.round((w - vpW) / 2);
-    const oy = Math.round((h - vpH) / 2);
+    const labelBand = 26 * dpr;
+    const fitScale = Math.min((w - labelBand) / this.gridCols, (h - labelBand) / this.gridRows);
+    const ox = Math.round(labelBand + (w - labelBand - this.gridCols * fitScale) / 2);
+    const oy = Math.round(labelBand + (h - labelBand - this.gridRows * fitScale) / 2);
+    const size = Math.ceil(fitScale);
 
     for (let r = 0; r < this.gridRows; r++) {
       for (let c = 0; c < this.gridCols; c++) {
-        if (!this.revealed[r * this.gridCols + c]) continue;
-        ctx.fillStyle = this.colors[r * this.gridCols + c];
-        ctx.fillRect(ox + c * fitScale, oy + r * fitScale, Math.ceil(fitScale), Math.ceil(fitScale));
+        const i = r * this.gridCols + c;
+        const kind = this.kinds[i];
+        const lit = this.revealed[i] === 1;
+        if (kind === "active") {
+          if (!lit) continue;
+          ctx.globalAlpha = this.highlight ? 0.25 : 1;
+        } else {
+          // Blanking zones stay faintly visible before the beam reaches them, so the layout is readable.
+          ctx.globalAlpha = kind === this.highlight ? 1 : this.highlight ? 0.1 : lit ? 0.75 : 0.18;
+        }
+        ctx.fillStyle = this.colors[i];
+        ctx.fillRect(ox + c * fitScale, oy + r * fitScale, size, size);
       }
     }
+    ctx.globalAlpha = 1;
 
-    const row = this.sim.row;
-    const col = this.sim.col;
-    const timing = appStore.get().timing;
-    if (timing && row < timing.v.active && col < timing.h.active) {
-      const gr = Math.min(this.gridRows - 1, Math.floor((row / timing.v.active) * this.gridRows));
-      const gc = Math.min(this.gridCols - 1, Math.floor((col / timing.h.active) * this.gridCols));
-      ctx.strokeStyle = "#f97316";
-      ctx.lineWidth = Math.max(1, fitScale * 0.15);
-      ctx.strokeRect(ox + gc * fitScale, oy + gr * fitScale, fitScale, fitScale);
+    // Outline of the visible (active) rectangle.
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.lineWidth = Math.max(1, dpr);
+    ctx.strokeRect(ox, oy, this.hLayout.active * fitScale, this.vLayout.active * fitScale);
+
+    this.drawZoneLabels(ctx, ox, oy, fitScale, dpr);
+
+    const gr = this.sim.row;
+    const gc = this.sim.col;
+    const hPhase = cellAxisPhase(gc, this.hLayout);
+    const vPhase = cellAxisPhase(gr, this.vLayout);
+
+    // Retrace: dashed line showing where the sync pulse sends the beam.
+    let retraceTo: [number, number] | null = null;
+    if (vPhase === "sync") retraceTo = [0, 0];
+    else if (hPhase === "sync") retraceTo = [0, Math.min(this.gridRows, gr + 1)];
+    if (retraceTo) {
+      ctx.strokeStyle = vPhase === "sync" ? ZONE_COLORS.vSync : ZONE_COLORS.hSync;
+      ctx.lineWidth = Math.max(1.5, dpr * 1.5);
+      ctx.setLineDash([5 * dpr, 4 * dpr]);
+      ctx.beginPath();
+      ctx.moveTo(ox + (gc + 0.5) * fitScale, oy + (gr + 0.5) * fitScale);
+      ctx.lineTo(ox + retraceTo[0] * fitScale, oy + retraceTo[1] * fitScale);
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
+
+    ctx.strokeStyle = "#f97316";
+    ctx.lineWidth = Math.max(1.5, fitScale * 0.15);
+    ctx.strokeRect(ox + gc * fitScale, oy + gr * fitScale, fitScale, fitScale);
+  }
+
+  private drawZoneLabels(ctx: CanvasRenderingContext2D, ox: number, oy: number, fitScale: number, dpr: number): void {
+    ctx.font = `${Math.round(13 * dpr)}px monospace`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const segs = (l: AxisLayout, syncLabel: string, syncColor: string): [number, number, string, string][] => [
+      [0, l.active, t("scan.zone.active"), "#9ca3af"],
+      [l.active, l.frontPorch, "FP", ZONE_COLORS.frontPorch],
+      [l.active + l.frontPorch, l.sync, syncLabel, syncColor],
+      [l.active + l.frontPorch + l.sync, l.backPorch, "BP", ZONE_COLORS.backPorch],
+    ];
+    for (const [start, len, label, color] of segs(this.hLayout, "H-SYNC", ZONE_COLORS.hSync)) {
+      if (len === 0) continue;
+      ctx.fillStyle = color;
+      ctx.fillText(label, ox + (start + len / 2) * fitScale, oy - 13 * dpr);
+    }
+    for (const [start, len, label, color] of segs(this.vLayout, "V-SYNC", ZONE_COLORS.vSync)) {
+      if (len === 0) continue;
+      ctx.save();
+      ctx.translate(ox - 13 * dpr, oy + (start + len / 2) * fitScale);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillStyle = color;
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+    }
+    ctx.textAlign = "start";
+    ctx.textBaseline = "alphabetic";
   }
 
   private drawBars(timing: DisplayTiming, hProgress: number, vProgress: number): void {
@@ -326,11 +484,11 @@ export class ScanViewManager {
     drawAxisWaveform(ctx, pad * 2 + barH, barH, barW, timing.v, vProgress, "V");
   }
 
-  private updateText(timing: DisplayTiming, row: number, col: number, hPhase: AxisPhase, vPhase: AxisPhase): void {
+  private updateText(row: number, col: number, hPhase: AxisPhase, vPhase: AxisPhase): void {
     this.hPhaseEl.textContent = t(phaseLabelKey(hPhase));
-    this.hCounterEl.textContent = `${t("scan.pixel")} ${col + 1} / ${axisTotal(timing.h)}`;
+    this.hCounterEl.textContent = `${t("scan.pixel")} ${col + 1} / ${this.gridCols}`;
     this.vPhaseEl.textContent = t(phaseLabelKey(vPhase));
-    this.vCounterEl.textContent = `${t("scan.line")} ${row + 1} / ${axisTotal(timing.v)}`;
+    this.vCounterEl.textContent = `${t("scan.line")} ${row + 1} / ${this.gridRows}`;
     this.frameEl.textContent = `${t("scan.frame")} #${this.sim.framesCompleted + 1}`;
   }
 
